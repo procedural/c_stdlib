@@ -66,15 +66,30 @@ void * syscall5(long, long, long, long, long, long);
 void * syscall6(long, long, long, long, long, long, long);
 void * dlsym(void *, char *);
 
-static inline int ilog2(int n) {
+void * memset(void * s, int c, size_t n) {
+  unsigned char * cs = s;
+  for (int i = 0; i < n; i += 1)
+    cs[i] = c;
+  return s;
+}
+
+void * memcpy(void * dest, const void * src, size_t n) {
+  unsigned char * csrc  = src;
+  unsigned char * cdest = dest;
+  for (int i = 0; i < n; i += 1)
+    cdest[i] = csrc[i];
+  return dest;
+}
+
+static inline int stdlib_log2i(int n) {
   return 31 - __builtin_clz(n);
 }
 
-static inline float absf(float a) {
+static inline float stdlib_fabsf(float a) {
   return a > 0 ? a : -a;
 }
 
-static inline double dfloor(double x) {
+static inline double stdlib_floor(double x) {
   union {double f; long i;} u = {x};
   int e = u.i >> 52 & 0x7ff;
   if (e >= 0x3ff + 52 || x == 0)
@@ -91,24 +106,24 @@ static inline double dfloor(double x) {
   return x + y;
 }
 
-static inline float fcos(float x) {
+static inline float stdlib_cosf(float x) {
   float tp = 1.0 / (2.0 * M_PI);
   x *= tp;
-  x -= 0.25 + (float)dfloor(x + 0.25);
-  x *= 16.0 * (absf(x) - 0.5);
-  x += 0.225 * x * (absf(x) - 1.0);
+  x -= 0.25 + (float)stdlib_floor(x + 0.25);
+  x *= 16.0 * (stdlib_fabsf(x) - 0.5);
+  x += 0.225 * x * (stdlib_fabsf(x) - 1.0);
   return x;
 }
 
-static inline float fsin(float x) {
-  return fcos(x - M_PI / 2.0);
+static inline float stdlib_sinf(float x) {
+  return stdlib_cosf(x - M_PI / 2.0);
 }
 
-static inline float ftan(float x) {
-  return fsin(x) / fcos(x);
+static inline float stdlib_tanf(float x) {
+  return stdlib_sinf(x) / stdlib_cosf(x);
 }
 
-static inline int print(int n, char * fmt, ...) {
+static inline int stdlib_nprintf(int n, char * fmt, ...) {
   va_list arg_list;
   va_start(arg_list, fmt);
   char s[n];
@@ -118,7 +133,7 @@ static inline int print(int n, char * fmt, ...) {
   return size;
 }
 
-static inline int snprintf(char * s, size_t n, char * fmt, ...) {
+static inline int stdlib_snprintf(char * s, size_t n, char * fmt, ...) {
   va_list arg_list;
   va_start(arg_list, fmt);
   int size = stbsp_vsnprintf(s, n, fmt, arg_list);
@@ -126,63 +141,52 @@ static inline int snprintf(char * s, size_t n, char * fmt, ...) {
   return size;
 }
 
-static inline int nstreq(size_t n, char * a, char * b) {
+static inline int stdlib_nstreq(size_t n, char * a, char * b) {
   for (size_t i = 0; i < n; i += 1) {
     if (a[i] != b[i])
-      return 0; 
+      return 0;
   }
   return 1;
 }
 
-void * memset(void * s, int c, size_t n) {
-  unsigned char * cs = s;
-  for (int i = 0; i < n; i += 1)
-    cs[i] = c;
-  return s;
+static inline int stdlib_stat(char * path, void * stat_buf) {
+  return (int)syscall2(4, (long)path, (long)stat_buf);
 }
 
-void * memcpy(void * dest, const void * src, size_t n) {
-  unsigned char * csrc  = src;
-  unsigned char * cdest = dest;
-  for (int i = 0; i < n; i += 1)
-    cdest[i] = csrc[i];
-  return dest;
-}
-
-static inline int open(char * pathname, int flags) {
+static inline int stdlib_open(char * pathname, int flags) {
   return (int)syscall3(2, (long)pathname, (long)flags, 0);
 }
 
-static inline int close(int fd) {
+static inline int stdlib_close(int fd) {
   return (int)syscall1(3, (long)fd);
 }
 
-ssize_t read(int fd, void * buf, size_t count) {
+ssize_t stdlib_read(int fd, void * buf, size_t count) {
   return (ssize_t)syscall3(0, fd, (long)buf, count);
 }
 
-ssize_t write(int fd, void * buf, size_t count) {
+ssize_t stdlib_write(int fd, void * buf, size_t count) {
   return (ssize_t)syscall3(1, fd, (long)buf, count);
 }
 
-static inline void * mmap(void * start, size_t len, int prot, int flags, int fd, off_t off) {
+static inline void * stdlib_mmap(void * start, size_t len, int prot, int flags, int fd, off_t off) {
   return syscall6(9, (long)start, (long)len, (long)prot, (long)flags, (long)fd, (long)off);
 }
 
-static inline int munmap(void * addr, size_t len) {
+static inline int stdlib_munmap(void * addr, size_t len) {
   return (int)syscall2(11, (long)addr, (long)len);
 }
 
-static inline _Noreturn void __assert(char * expr, char * file, int line, char * func) {
-  print(4096, "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
+static inline _Noreturn void _stdlib_assert(char * expr, char * file, int line, char * func) {
+  stdlib_nprintf(4096, "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line); // Assumption
   syscall3(234, (long)syscall0(186), (long)syscall0(186), 6);
   syscall3(234, (long)syscall0(186), (long)syscall0(186), 9);
   for (;;);
 }
 
-#define assert(x) ((void)((x) || (__assert(#x, __FILE__, __LINE__, __func__),0)))
+#define stdlib_assert(x) ((void)((x) || (_stdlib_assert(#x, __FILE__, __LINE__, __func__),0)))
 
-static inline int gettimeofday(struct timeval * restrict tv, void * restrict tz) {
+static inline int stdlib_gettimeofday(struct timeval * restrict tv, void * restrict tz) {
   if (tv == NULL)
     return 0;
   struct timespec ts;
