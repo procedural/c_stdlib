@@ -157,6 +157,10 @@ static inline int stdlib_open(char * pathname, int flags) {
   return (int)syscall3(2, (long)pathname, (long)flags, 0);
 }
 
+static inline int stdlib_open3(char * pathname, int flags, int mode) {
+  return (int)syscall3(2, (long)pathname, (long)flags, mode);
+}
+
 static inline int stdlib_close(int fd) {
   return (int)syscall1(3, (long)fd);
 }
