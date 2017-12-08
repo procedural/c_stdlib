@@ -64,7 +64,10 @@ void * syscall3(long, long, long, long);
 void * syscall4(long, long, long, long, long);
 void * syscall5(long, long, long, long, long, long);
 void * syscall6(long, long, long, long, long, long, long);
+
+void * dlopen(char *, int);
 void * dlsym(void *, char *);
+int dlclose(void *);
 
 void * memset(void * s, int c, size_t n) {
   unsigned char * cs = s;
