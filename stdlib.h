@@ -77,7 +77,7 @@ void * memset(void * s, int c, size_t n) {
 }
 
 void * memcpy(void * dest, const void * src, size_t n) {
-  unsigned char * csrc  = src;
+  const unsigned char * csrc = src;
   unsigned char * cdest = dest;
   for (int i = 0; i < n; i += 1)
     cdest[i] = csrc[i];
@@ -126,16 +126,6 @@ static inline float stdlib_tanf(float x) {
   return stdlib_sinf(x) / stdlib_cosf(x);
 }
 
-static inline int stdlib_nprintf(int n, char * fmt, ...) {
-  va_list arg_list;
-  va_start(arg_list, fmt);
-  char s[n];
-  int size = stbsp_vsnprintf(s, n, fmt, arg_list);
-  va_end(arg_list);
-  syscall5(1, 1, (long)s, (long)size, 0, 0);
-  return size;
-}
-
 static inline int stdlib_snprintf(char * s, size_t n, char * fmt, ...) {
   va_list arg_list;
   va_start(arg_list, fmt);
@@ -143,6 +133,13 @@ static inline int stdlib_snprintf(char * s, size_t n, char * fmt, ...) {
   va_end(arg_list);
   return size;
 }
+
+#define stdlib_printf(fmt, ...) do {                     \
+  int size = stdlib_snprintf(NULL, 0, fmt, __VA_ARGS__); \
+  char s[size + 1];                                      \
+  stdlib_snprintf(s, size + 1, fmt, __VA_ARGS__);        \
+  syscall5(1, 1, (long)s, (long)(size + 1), 0, 0);       \
+} while (0)
 
 static inline int stdlib_nstreq(size_t n, char * a, char * b) {
   for (size_t i = 0; i < n; i += 1) {
@@ -185,7 +182,7 @@ static inline int stdlib_munmap(void * addr, size_t len) {
 }
 
 static inline _Noreturn void _stdlib_assert(char * expr, char * file, int line, char * func) {
-  stdlib_nprintf(4096, "Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line); // Assumption
+  stdlib_printf("Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
   syscall3(234, (long)syscall0(186), (long)syscall0(186), 6);
   syscall3(234, (long)syscall0(186), (long)syscall0(186), 9);
   for (;;);
