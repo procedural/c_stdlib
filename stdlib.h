@@ -138,7 +138,7 @@ static inline int stdlib_snprintf(char * s, size_t n, char * fmt, ...) {
   int size = stdlib_snprintf(NULL, 0, fmt, __VA_ARGS__); \
   char s[size + 1];                                      \
   stdlib_snprintf(s, size + 1, fmt, __VA_ARGS__);        \
-  syscall5(1, 1, (long)s, (long)(size + 1), 0, 0);       \
+  syscall5(1, 1, (long)s, (long)size, 0, 0);             \
 } while (0)
 
 static inline int stdlib_nstreq(size_t n, char * a, char * b) {
