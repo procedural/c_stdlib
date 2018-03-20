@@ -57,6 +57,33 @@
 
 #define M_PI 3.14159265358979323846
 
+#if 0
+struct timespec {
+  long tv_sec;
+  long tv_nsec;
+};
+#endif
+
+struct stat {
+  long st_dev;
+  long st_ino;
+  unsigned st_nlink;
+
+  unsigned st_mode;
+  unsigned st_uid;
+  unsigned st_gid;
+  unsigned __pad0;
+  long st_rdev;
+  long st_size;
+  long st_blksize;
+  long st_blocks;
+
+  struct timespec st_atim;
+  struct timespec st_mtim;
+  struct timespec st_ctim;
+  long __unused[3];
+};
+
 void * syscall0(long);
 void * syscall1(long, long);
 void * syscall2(long, long, long);
@@ -171,6 +198,10 @@ ssize_t stdlib_read(int fd, void * buf, size_t count) {
 
 ssize_t stdlib_write(int fd, void * buf, size_t count) {
   return (ssize_t)syscall3(1, fd, (long)buf, count);
+}
+
+static inline int stdlib_fstat(int fd, struct stat * st) {
+  return (int)syscall2(5, fd, (long)st);
 }
 
 static inline void * stdlib_mmap(void * start, size_t len, int prot, int flags, int fd, off_t off) {
