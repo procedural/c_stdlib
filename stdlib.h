@@ -136,6 +136,21 @@ static inline double stdlib_floor(double x) {
   return x + y;
 }
 
+static inline float stdlib_rsqrtf(float x) {
+  float xhalf = 0.5f * x;
+  int i = *(int*)&x;
+  i = 0x5f375a86 - (i >> 1);
+  x = *(float*)&i;
+  x = x * (1.5f - xhalf * x * x);
+  x = x * (1.5f - xhalf * x * x);
+  x = x * (1.5f - xhalf * x * x);
+  return x;
+}
+
+static inline float stdlib_sqrtf(float x) {
+  return x * stdlib_rsqrtf(x);
+}
+
 static inline float stdlib_cosf(float x) {
   float tp = 1.0 / (2.0 * M_PI);
   x *= tp;
