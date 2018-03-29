@@ -177,19 +177,19 @@ static inline int stdlib_nstreq(size_t n, char * a, char * b) {
 }
 
 static inline int stdlib_stat(char * path, void * stat_buf) {
-  return (int)syscall2(4, (long)path, (long)stat_buf);
+  return (int)(long)syscall2(4, (long)path, (long)stat_buf);
 }
 
 static inline int stdlib_open(char * pathname, int flags) {
-  return (int)syscall3(2, (long)pathname, (long)flags, 0);
+  return (int)(long)syscall3(2, (long)pathname, (long)flags, 0);
 }
 
 static inline int stdlib_open3(char * pathname, int flags, int mode) {
-  return (int)syscall3(2, (long)pathname, (long)flags, mode);
+  return (int)(long)syscall3(2, (long)pathname, (long)flags, mode);
 }
 
 static inline int stdlib_close(int fd) {
-  return (int)syscall1(3, (long)fd);
+  return (int)(long)syscall1(3, (long)fd);
 }
 
 ssize_t stdlib_read(int fd, void * buf, size_t count) {
@@ -201,7 +201,7 @@ ssize_t stdlib_write(int fd, void * buf, size_t count) {
 }
 
 static inline int stdlib_fstat(int fd, struct stat * st) {
-  return (int)syscall2(5, fd, (long)st);
+  return (int)(long)syscall2(5, fd, (long)st);
 }
 
 static inline void * stdlib_mmap(void * start, size_t len, int prot, int flags, int fd, off_t off) {
@@ -209,7 +209,7 @@ static inline void * stdlib_mmap(void * start, size_t len, int prot, int flags, 
 }
 
 static inline int stdlib_munmap(void * addr, size_t len) {
-  return (int)syscall2(11, (long)addr, (long)len);
+  return (int)(long)syscall2(11, (long)addr, (long)len);
 }
 
 static inline _Noreturn void _stdlib_assert(char * expr, char * file, int line, char * func) {
