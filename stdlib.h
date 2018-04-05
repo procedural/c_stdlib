@@ -246,3 +246,7 @@ static inline int stdlib_gettimeofday(struct timeval * restrict tv, void * restr
   tv->tv_usec = (int)ts.tv_nsec / 1000;
   return 0;
 }
+
+static inline int nanosleep(const struct timespec * req, struct timespec * rem) {
+  return (int)(long)syscall2(35, (long)req, (long)rem);
+}
