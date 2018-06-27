@@ -55,6 +55,19 @@
 #define MAP_STACK      0x20000
 #define MAP_HUGETLB    0x40000
 
+#define CLOCK_REALTIME            0
+#define CLOCK_MONOTONIC           1
+#define CLOCK_PROCESS_CPUTIME_ID  2
+#define CLOCK_THREAD_CPUTIME_ID   3
+#define CLOCK_MONOTONIC_RAW       4
+#define CLOCK_REALTIME_COARSE     5
+#define CLOCK_MONOTONIC_COARSE    6
+#define CLOCK_BOOTTIME            7
+#define CLOCK_REALTIME_ALARM      8
+#define CLOCK_BOOTTIME_ALARM      9
+#define CLOCK_SGI_CYCLE          10
+#define CLOCK_TAI                11
+
 #define M_PI 3.14159265358979323846
 
 #if 0
@@ -236,7 +249,11 @@ static inline _Noreturn void _stdlib_assert(char * expr, char * file, int line, 
 
 #define stdlib_assert(x) ((void)((x) || (_stdlib_assert(#x, __FILE__, __LINE__, __func__),0)))
 
-static inline int stdlib_gettimeofday(struct timeval * restrict tv, void * restrict tz) {
+static inline int stdlib_clock_gettime(int clk, struct timespec * ts) {
+  return (int)(long)syscall2(228, (long)clk, (long)ts);
+}
+
+static inline int stdlib_gettimeofday(struct timeval * tv, void * tz) {
   if (tv == NULL)
     return 0;
   struct timespec ts;
