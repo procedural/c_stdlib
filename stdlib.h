@@ -213,7 +213,7 @@ static inline int stdlib_open(char * pathname, int flags) {
 }
 
 static inline int stdlib_open3(char * pathname, int flags, int mode) {
-  return (int)(long)syscall3(2, (long)pathname, (long)flags, mode);
+  return (int)(long)syscall3(2, (long)pathname, (long)flags, (long)mode);
 }
 
 static inline int stdlib_close(int fd) {
@@ -221,15 +221,15 @@ static inline int stdlib_close(int fd) {
 }
 
 ssize_t stdlib_read(int fd, void * buf, size_t count) {
-  return (ssize_t)syscall3(0, fd, (long)buf, count);
+  return (ssize_t)syscall3(0, (long)fd, (long)buf, (long)count);
 }
 
 ssize_t stdlib_write(int fd, void * buf, size_t count) {
-  return (ssize_t)syscall3(1, fd, (long)buf, count);
+  return (ssize_t)syscall3(1, (long)fd, (long)buf, (long)count);
 }
 
 static inline int stdlib_fstat(int fd, struct stat * st) {
-  return (int)(long)syscall2(5, fd, (long)st);
+  return (int)(long)syscall2(5, (long)fd, (long)st);
 }
 
 static inline void * stdlib_mmap(void * start, size_t len, int prot, int flags, int fd, off_t off) {
