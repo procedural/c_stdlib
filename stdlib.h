@@ -303,30 +303,27 @@ int stdlib_posix_memalign(void ** res, size_t align, size_t len) {
   unsigned char * new = NULL;
 
   if (align < sizeof(void *)) {
-    *res = NULL;
     return EINVAL;
   }
 
   if ((align & -align) != align) {
-    *res = NULL;
     return EINVAL;
   }
 
   if (len > 0xffffffffffffffffu - align) {
-    *res = NULL;
     return ENOMEM;
   }
 
   if (align <= (4 * sizeof(size_t))) {
-    *res = stdlib_malloc(len);
-    if (*res == NULL) {
+    new = stdlib_malloc(len);
+    if (new == NULL) {
       return ENOMEM;
     }
+    *res = new;
     return 0;
   }
 
   if (!(mem = stdlib_malloc(len + align-1))) {
-    *res = NULL;
     return ENOMEM;
   }
 
