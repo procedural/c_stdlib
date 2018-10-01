@@ -3,6 +3,8 @@
 #define STB_SPRINTF_IMPLEMENTATION
 #include "stb_sprintf.h"
 
+#define PAGESIZE 4096
+
 #define O_RDONLY  00
 #define O_WRONLY  01
 #define O_RDWR    02
@@ -54,6 +56,9 @@
 #define MAP_NONBLOCK   0x10000
 #define MAP_STACK      0x20000
 #define MAP_HUGETLB    0x40000
+
+#define ENOMEM 12
+#define EINVAL 22
 
 #define CLOCK_REALTIME            0
 #define CLOCK_MONOTONIC           1
@@ -128,6 +133,10 @@ static inline int stdlib_log2i(int n) {
   return 31 - __builtin_clz(n);
 }
 
+static inline int stdlib_abs(int a) {
+  return a > 0 ? a : -a;
+}
+
 static inline float stdlib_fabsf(float a) {
   return a > 0 ? a : -a;
 }
@@ -181,7 +190,7 @@ static inline float stdlib_tanf(float x) {
   return stdlib_sinf(x) / stdlib_cosf(x);
 }
 
-static inline int stdlib_snprintf(char * s, size_t n, char * fmt, ...) {
+static inline int stdlib_snprintf(char * s, size_t n, const char * fmt, ...) {
   va_list arg_list;
   va_start(arg_list, fmt);
   int size = stbsp_vsnprintf(s, n, fmt, arg_list);
@@ -196,7 +205,7 @@ static inline int stdlib_snprintf(char * s, size_t n, char * fmt, ...) {
   syscall5(1, 1, (long)s, (long)size, 0, 0);             \
 } while (0)
 
-static inline int stdlib_nstreq(size_t n, char * a, char * b) {
+static inline int stdlib_nstreq(size_t n, const char * a, const char * b) {
   for (size_t i = 0; i < n; i += 1) {
     if (a[i] != b[i])
       return 0;
@@ -204,15 +213,24 @@ static inline int stdlib_nstreq(size_t n, char * a, char * b) {
   return 1;
 }
 
-static inline int stdlib_stat(char * path, void * stat_buf) {
+static inline size_t stdlib_strlen(const char *s) {
+  const char * a = s;
+  const size_t * w = NULL;
+  for (; (size_t)s % (sizeof(size_t)); s++) if (!*s) return s-a;
+  for (w = (const void *)s; !((*w)-((size_t)-1/255) & ~(*w) & (((size_t)-1/255) * (255/2+1))); w++);
+  for (s = (const void *)w; *s; s++);
+  return s-a;
+}
+
+static inline int stdlib_stat(const char * path, void * stat_buf) {
   return (int)(long)syscall2(4, (long)path, (long)stat_buf);
 }
 
-static inline int stdlib_open(char * pathname, int flags) {
+static inline int stdlib_open(const char * pathname, int flags) {
   return (int)(long)syscall3(2, (long)pathname, (long)flags, 0);
 }
 
-static inline int stdlib_open3(char * pathname, int flags, int mode) {
+static inline int stdlib_open3(const char * pathname, int flags, int mode) {
   return (int)(long)syscall3(2, (long)pathname, (long)flags, (long)mode);
 }
 
@@ -240,7 +258,102 @@ static inline int stdlib_munmap(void * addr, size_t len) {
   return (int)(long)syscall2(11, (long)addr, (long)len);
 }
 
-static inline _Noreturn void _stdlib_assert(char * expr, char * file, int line, char * func) {
+static inline void * stdlib_malloc(size_t size) {
+  size += sizeof(size_t);
+  int r = size % PAGESIZE;
+  if (r > 0) {
+    size += PAGESIZE - r;
+  }
+  void * ptr = stdlib_mmap(0, size, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+  if (ptr == MAP_FAILED) {
+    return NULL;
+  }
+  *(size_t *)ptr = size;
+  return (size_t *)ptr + 1;
+}
+
+static inline void stdlib_free(void * ptr) {
+  if (ptr == NULL) {
+    return;
+  }
+  size_t * malloc_ptr = (size_t *)ptr - 1;
+  stdlib_munmap(malloc_ptr, *malloc_ptr);
+}
+
+static inline void * stdlib_realloc(void * ptr, size_t new_size) {
+  void * new_ptr = stdlib_malloc(new_size);
+  if (new_ptr == NULL) {
+    return NULL;
+  }
+  if (ptr == NULL) {
+    return new_ptr;
+  }
+  size_t old_size = *((size_t *)ptr - 1);
+  old_size -= sizeof(size_t);
+  if (new_size < old_size) {
+    old_size = new_size;
+  }
+  memcpy(new_ptr, ptr, old_size);
+  stdlib_free(ptr);
+  return new_ptr;
+}
+
+int stdlib_posix_memalign(void ** res, size_t align, size_t len) {
+  unsigned char * mem = NULL;
+  unsigned char * new = NULL;
+
+  if (align < sizeof(void *)) {
+    *res = NULL;
+    return EINVAL;
+  }
+
+  if ((align & -align) != align) {
+    *res = NULL;
+    return EINVAL;
+  }
+
+  if (len > 0xffffffffffffffffu - align) {
+    *res = NULL;
+    return ENOMEM;
+  }
+
+  if (align <= (4 * sizeof(size_t))) {
+    *res = stdlib_malloc(len);
+    if (*res == NULL) {
+      return ENOMEM;
+    }
+    return 0;
+  }
+
+  if (!(mem = stdlib_malloc(len + align-1))) {
+    *res = NULL;
+    return ENOMEM;
+  }
+
+  new = (void *)((size_t)mem + align-1 & -align);
+
+  if (new == mem) {
+    *res = mem;
+    return 0;
+  }
+
+  *res = new;
+  return 0;
+}
+
+static inline void * stdlib_memmove(void * dest, const void * src, size_t n) {
+  const unsigned char * csrc = src;
+  unsigned char * cdest = dest;
+  unsigned char * temp = stdlib_malloc(n);
+  for (int i = 0; i < n; i += 1)
+    temp[i] = csrc[i];
+  for (int i = 0; i < n; i += 1)
+    cdest[i] = temp[i];
+  stdlib_free(temp);
+  return dest;
+}
+
+static inline _Noreturn void _stdlib_assert(const char * expr, const char * file, int line, const char * func) {
   stdlib_printf("Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
   syscall3(234, (long)syscall0(186), (long)syscall0(186), 6);
   syscall3(234, (long)syscall0(186), (long)syscall0(186), 9);

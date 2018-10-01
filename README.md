@@ -1,2 +1,2 @@
-Tiny C stdlib for Linux (x64)
------------------------------
+Tiny C Standard Library for x64 Linux
+-------------------------------------
