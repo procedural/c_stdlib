@@ -301,39 +301,31 @@ static inline void * stdlib_realloc(void * ptr, size_t new_size) {
 int stdlib_posix_memalign(void ** res, size_t align, size_t len) {
   unsigned char * mem = NULL;
   unsigned char * new = NULL;
-
   if (align < sizeof(void *)) {
     return EINVAL;
   }
-
   if ((align & -align) != align) {
     return EINVAL;
   }
-
   if (len > 0xffffffffffffffffu - align) {
     return ENOMEM;
   }
-
   if (align <= (4 * sizeof(size_t))) {
-    new = stdlib_malloc(len);
-    if (new == NULL) {
+    mem = stdlib_malloc(len);
+    if (mem == NULL) {
       return ENOMEM;
     }
-    *res = new;
+    *res = mem;
     return 0;
   }
-
   if (!(mem = stdlib_malloc(len + align-1))) {
     return ENOMEM;
   }
-
   new = (void *)((size_t)mem + align-1 & -align);
-
   if (new == mem) {
     *res = mem;
     return 0;
   }
-
   *res = new;
   return 0;
 }
