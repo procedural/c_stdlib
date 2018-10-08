@@ -1,7 +1,15 @@
 #pragma once
 
+#ifdef STDLIB_IMPLEMENTATION
 #define STB_SPRINTF_IMPLEMENTATION
+#endif
 #include "stb_sprintf.h"
+
+#include <stddef.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #define PAGESIZE 4096
 
@@ -75,12 +83,11 @@
 
 #define M_PI 3.14159265358979323846
 
-#if 0
-struct timespec {
-  long tv_sec;
-  long tv_nsec;
-};
-#endif
+typedef long ssize_t;
+typedef long off_t;
+
+struct timespec;
+struct timeval;
 
 struct stat {
   long st_dev;
@@ -96,9 +103,9 @@ struct stat {
   long st_blksize;
   long st_blocks;
 
-  struct timespec st_atim;
-  struct timespec st_mtim;
-  struct timespec st_ctim;
+  struct {long tv_sec; long tv_nsec;} st_atim;
+  struct {long tv_sec; long tv_nsec;} st_mtim;
+  struct {long tv_sec; long tv_nsec;} st_ctim;
   long __unused[3];
 };
 
@@ -114,16 +121,16 @@ void * dlopen(char *, int);
 void * dlsym(void *, char *);
 int dlclose(void *);
 
-void * memset(void * s, int c, size_t n) {
-  unsigned char * cs = s;
+static inline void * stdlib_memset(void * s, int c, size_t n) {
+  unsigned char * cs = (unsigned char *)s;
   for (int i = 0; i < n; i += 1)
     cs[i] = c;
   return s;
 }
 
-void * memcpy(void * dest, const void * src, size_t n) {
-  const unsigned char * csrc = src;
-  unsigned char * cdest = dest;
+static inline void * stdlib_memcpy(void * dest, const void * src, size_t n) {
+  const unsigned char * csrc = (const unsigned char *)src;
+  unsigned char * cdest = (unsigned char *)dest;
   for (int i = 0; i < n; i += 1)
     cdest[i] = csrc[i];
   return dest;
@@ -217,8 +224,8 @@ static inline size_t stdlib_strlen(const char *s) {
   const char * a = s;
   const size_t * w = NULL;
   for (; (size_t)s % (sizeof(size_t)); s++) if (!*s) return s-a;
-  for (w = (const void *)s; !((*w)-((size_t)-1/255) & ~(*w) & (((size_t)-1/255) * (255/2+1))); w++);
-  for (s = (const void *)w; *s; s++);
+  for (w = (const size_t *)s; !((*w)-((size_t)-1/255) & ~(*w) & (((size_t)-1/255) * (255/2+1))); w++);
+  for (s = (const char *)w; *s; s++);
   return s-a;
 }
 
@@ -238,11 +245,11 @@ static inline int stdlib_close(int fd) {
   return (int)(long)syscall1(3, (long)fd);
 }
 
-ssize_t stdlib_read(int fd, void * buf, size_t count) {
+static inline ssize_t stdlib_read(int fd, void * buf, size_t count) {
   return (ssize_t)syscall3(0, (long)fd, (long)buf, (long)count);
 }
 
-ssize_t stdlib_write(int fd, void * buf, size_t count) {
+static inline ssize_t stdlib_write(int fd, void * buf, size_t count) {
   return (ssize_t)syscall3(1, (long)fd, (long)buf, (long)count);
 }
 
@@ -293,14 +300,13 @@ static inline void * stdlib_realloc(void * ptr, size_t new_size) {
   if (new_size < old_size) {
     old_size = new_size;
   }
-  memcpy(new_ptr, ptr, old_size);
+  stdlib_memcpy(new_ptr, ptr, old_size);
   stdlib_free(ptr);
   return new_ptr;
 }
 
-int stdlib_posix_memalign(void ** res, size_t align, size_t len) {
+static inline int stdlib_posix_memalign(void ** res, size_t align, size_t len) {
   unsigned char * mem = NULL;
-  unsigned char * new = NULL;
   if (align < sizeof(void *)) {
     return EINVAL;
   }
@@ -311,29 +317,40 @@ int stdlib_posix_memalign(void ** res, size_t align, size_t len) {
     return ENOMEM;
   }
   if (align <= (4 * sizeof(size_t))) {
-    mem = stdlib_malloc(len);
+    mem = (unsigned char *)stdlib_malloc(len);
     if (mem == NULL) {
       return ENOMEM;
     }
     *res = mem;
     return 0;
   }
-  if (!(mem = stdlib_malloc(len + align-1))) {
+  if (!(mem = (unsigned char *)stdlib_malloc(len + align-1))) {
     return ENOMEM;
   }
-  new = (void *)((size_t)mem + align-1 & -align);
-  if (new == mem) {
+  unsigned char * new_mem = (unsigned char *)((size_t)mem + align-1 & -align);
+  if (new_mem == mem) {
     *res = mem;
     return 0;
   }
-  *res = new;
+  *res = new_mem;
   return 0;
 }
 
+static inline void * stdlib_aligned_alloc(size_t alignment, size_t size) {
+  if (alignment < sizeof(void *)) {
+    alignment = sizeof(void *);
+  }
+  void * pointer = NULL;
+  if (stdlib_posix_memalign(&pointer, alignment, size) == 0) {
+    return pointer;
+  }
+  return NULL;
+}
+
 static inline void * stdlib_memmove(void * dest, const void * src, size_t n) {
-  const unsigned char * csrc = src;
-  unsigned char * cdest = dest;
-  unsigned char * temp = stdlib_malloc(n);
+  const unsigned char * csrc = (const unsigned char *)src;
+  unsigned char * cdest = (unsigned char *)dest;
+  unsigned char * temp = (unsigned char *)stdlib_malloc(n);
   for (int i = 0; i < n; i += 1)
     temp[i] = csrc[i];
   for (int i = 0; i < n; i += 1)
@@ -358,14 +375,38 @@ static inline int stdlib_clock_gettime(int clk, struct timespec * ts) {
 static inline int stdlib_gettimeofday(struct timeval * tv, void * tz) {
   if (tv == NULL)
     return 0;
-  struct timespec ts;
+  struct {long tv_sec; long tv_usec;} * tval;
+  tval = (typeof(tval))tv;
+  struct {long tv_sec; long tv_nsec;} ts;
   syscall2(228, 0, (long)&ts);
-  tv->tv_sec = ts.tv_sec;
+  tval->tv_sec = ts.tv_sec;
   syscall3(96, 0, (long)&ts, 0);
-  tv->tv_usec = (int)ts.tv_nsec / 1000;
+  tval->tv_usec = (int)ts.tv_nsec / 1000;
   return 0;
 }
 
 static inline int nanosleep(const struct timespec * req, struct timespec * rem) {
   return (int)(long)syscall2(35, (long)req, (long)rem);
 }
+
+#ifdef STDLIB_IMPLEMENTATION
+void * memset(void * s, int c, size_t n) {
+  return stdlib_memset(s, c, n);
+}
+
+void * memcpy(void * dest, const void * src, size_t n) {
+  return stdlib_memcpy(dest, src, n);
+}
+
+void * memmove(void * dest, const void * src, size_t n) {
+  return stdlib_memmove(dest, src, n);
+}
+#else
+void * memset(void * s, int c, size_t n);
+void * memcpy(void * dest, const void * src, size_t n);
+void * memmove(void * dest, const void * src, size_t n);
+#endif
+
+#ifdef __cplusplus
+}
+#endif
