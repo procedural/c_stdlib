@@ -385,7 +385,7 @@ static inline int stdlib_gettimeofday(struct timeval * tv, void * tz) {
   return 0;
 }
 
-static inline int nanosleep(const struct timespec * req, struct timespec * rem) {
+static inline int stdlib_nanosleep(const struct timespec * req, struct timespec * rem) {
   return (int)(long)syscall2(35, (long)req, (long)rem);
 }
 
