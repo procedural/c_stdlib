@@ -121,20 +121,25 @@ void * dlopen(char *, int);
 void * dlsym(void *, char *);
 int dlclose(void *);
 
-static inline void * stdlib_memset(void * s, int c, size_t n) {
+#ifdef STDLIB_IMPLEMENTATION
+void * memset(void * s, int c, size_t n) {
   unsigned char * cs = (unsigned char *)s;
   for (int i = 0; i < n; i += 1)
     cs[i] = c;
   return s;
 }
 
-static inline void * stdlib_memcpy(void * dest, const void * src, size_t n) {
+void * memcpy(void * dest, const void * src, size_t n) {
   const unsigned char * csrc = (const unsigned char *)src;
   unsigned char * cdest = (unsigned char *)dest;
   for (int i = 0; i < n; i += 1)
     cdest[i] = csrc[i];
   return dest;
 }
+#else
+void * memset(void * s, int c, size_t n);
+void * memcpy(void * dest, const void * src, size_t n);
+#endif
 
 static inline int stdlib_log2i(int n) {
   return 31 - __builtin_clz(n);
@@ -300,7 +305,7 @@ static inline void * stdlib_realloc(void * ptr, size_t new_size) {
   if (new_size < old_size) {
     old_size = new_size;
   }
-  stdlib_memcpy(new_ptr, ptr, old_size);
+  memcpy(new_ptr, ptr, old_size);
   stdlib_free(ptr);
   return new_ptr;
 }
@@ -347,7 +352,8 @@ static inline void * stdlib_aligned_alloc(size_t alignment, size_t size) {
   return NULL;
 }
 
-static inline void * stdlib_memmove(void * dest, const void * src, size_t n) {
+#ifdef STDLIB_IMPLEMENTATION
+void * memmove(void * dest, const void * src, size_t n) {
   const unsigned char * csrc = (const unsigned char *)src;
   unsigned char * cdest = (unsigned char *)dest;
   unsigned char * temp = (unsigned char *)stdlib_malloc(n);
@@ -358,6 +364,9 @@ static inline void * stdlib_memmove(void * dest, const void * src, size_t n) {
   stdlib_free(temp);
   return dest;
 }
+#else
+void * memmove(void * dest, const void * src, size_t n);
+#endif
 
 static inline _Noreturn void _stdlib_assert(const char * expr, const char * file, int line, const char * func) {
   stdlib_printf("Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
@@ -388,24 +397,6 @@ static inline int stdlib_gettimeofday(struct timeval * tv, void * tz) {
 static inline int stdlib_nanosleep(const struct timespec * req, struct timespec * rem) {
   return (int)(long)syscall2(35, (long)req, (long)rem);
 }
-
-#ifdef STDLIB_IMPLEMENTATION
-void * memset(void * s, int c, size_t n) {
-  return stdlib_memset(s, c, n);
-}
-
-void * memcpy(void * dest, const void * src, size_t n) {
-  return stdlib_memcpy(dest, src, n);
-}
-
-void * memmove(void * dest, const void * src, size_t n) {
-  return stdlib_memmove(dest, src, n);
-}
-#else
-void * memset(void * s, int c, size_t n);
-void * memcpy(void * dest, const void * src, size_t n);
-void * memmove(void * dest, const void * src, size_t n);
-#endif
 
 #ifdef __cplusplus
 }
