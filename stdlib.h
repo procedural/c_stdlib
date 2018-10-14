@@ -225,6 +225,11 @@ static inline int stdlib_nstreq(size_t n, const char * a, const char * b) {
   return 1;
 }
 
+static inline int stdlib_strcmp(const char * l, const char * r) {
+  for (; *l==*r && *l; l++, r++);
+  return *(unsigned char *)l - *(unsigned char *)r;
+}
+
 static inline size_t stdlib_strlen(const char *s) {
   const char * a = s;
   const size_t * w = NULL;
@@ -232,6 +237,24 @@ static inline size_t stdlib_strlen(const char *s) {
   for (w = (const size_t *)s; !((*w)-((size_t)-1/255) & ~(*w) & (((size_t)-1/255) * (255/2+1))); w++);
   for (s = (const char *)w; *s; s++);
   return s-a;
+}
+
+static inline char * stdlib_strncpy(char * d, const char * s, size_t n) {
+  size_t * wd = NULL;
+  const size_t * ws = NULL;
+
+  if (((size_t)s & (sizeof(size_t)-1)) == ((size_t)d & (sizeof(size_t)-1))) {
+    for (; ((size_t)s & (sizeof(size_t)-1)) && n && (*d=*s); n--, s++, d++);
+    if (!n || !*s) goto tail;
+    wd=(size_t *)d; ws=(const size_t *)s;
+    for (; n>=sizeof(size_t) && !((*ws)-(((size_t)-1/255) * (255/2+1)) & ~(*ws) & (((size_t)-1/255) * (255/2+1)));
+      n-=sizeof(size_t), ws++, wd++) *wd = *ws;
+    d=(char *)wd; s=(const char *)ws;
+  }
+  for (; n && (*d=*s); n--, s++, d++);
+tail:
+  memset(d, 0, n);
+  return d;
 }
 
 static inline int stdlib_stat(const char * path, void * stat_buf) {
@@ -282,6 +305,10 @@ static inline void * stdlib_malloc(size_t size) {
   }
   *(size_t *)ptr = size;
   return (size_t *)ptr + 1;
+}
+
+static inline void * stdlib_calloc(size_t num, size_t size) {
+  return stdlib_malloc(num * size);
 }
 
 static inline void stdlib_free(void * ptr) {
@@ -368,7 +395,7 @@ void * memmove(void * dest, const void * src, size_t n) {
 void * memmove(void * dest, const void * src, size_t n);
 #endif
 
-static inline _Noreturn void _stdlib_assert(const char * expr, const char * file, int line, const char * func) {
+static inline _Noreturn void _stdlib_assert(const char * expr, const char * file, unsigned int line, const char * func) {
   stdlib_printf("Assertion failed: %s (%s: %s: %d)\n", expr, file, func, line);
   syscall3(234, (long)syscall0(186), (long)syscall0(186), 6);
   syscall3(234, (long)syscall0(186), (long)syscall0(186), 9);
