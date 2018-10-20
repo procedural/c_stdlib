@@ -6,4 +6,5 @@ Unsupported compiler flags:
 
 Notable libraries in the same spirit:
 
-`pt_math`, public domain fast scalar math routines: https://github.com/pmttavara/pt_math
+* `pt_math`, public domain fast scalar math routines: https://github.com/pmttavara/pt_math
+* `stdstring.h`, public domain string utils: https://github.com/r-lyeh/stdstring.h
