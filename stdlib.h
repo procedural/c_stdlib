@@ -217,14 +217,6 @@ static inline int stdlib_snprintf(char * s, size_t n, const char * fmt, ...) {
   syscall5(1, 1, (long)s, (long)size, 0, 0);             \
 } while (0)
 
-static inline int stdlib_nstreq(size_t n, const char * a, const char * b) {
-  for (size_t i = 0; i < n; i += 1) {
-    if (a[i] != b[i])
-      return 0;
-  }
-  return 1;
-}
-
 static inline int stdlib_strcmp(const char * l, const char * r) {
   for (; *l==*r && *l; l++, r++);
   return *(unsigned char *)l - *(unsigned char *)r;
