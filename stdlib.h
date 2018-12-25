@@ -117,9 +117,20 @@ void * syscall4(long, long, long, long, long);
 void * syscall5(long, long, long, long, long, long);
 void * syscall6(long, long, long, long, long, long, long);
 
+int dlclose(void *);
+char * dlerror();
 void * dlopen(char *, int);
 void * dlsym(void *, char *);
-int dlclose(void *);
+
+struct Dl_info {
+  const char * dli_fname;
+  void * dli_fbase;
+  const char * dli_sname;
+  void * dli_saddr;
+};
+
+int dladdr(const void *, struct Dl_info *);
+int dlinfo(void *, int, void *);
 
 #ifdef STDLIB_IMPLEMENTATION
 void * memset(void * s, int c, size_t n) {
