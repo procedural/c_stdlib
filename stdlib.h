@@ -222,7 +222,7 @@ static inline int stdlib_strcmp(const char * l, const char * r) {
   return *(unsigned char *)l - *(unsigned char *)r;
 }
 
-static inline size_t stdlib_strlen(const char *s) {
+static inline size_t stdlib_strlen(const char * s) {
   const char * a = s;
   const size_t * w = NULL;
   for (; (size_t)s % (sizeof(size_t)); s++) if (!*s) return s-a;
