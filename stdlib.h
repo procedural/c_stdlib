@@ -135,7 +135,7 @@ int dlinfo(void *, int, void *);
 #ifdef STDLIB_IMPLEMENTATION
 void * memset(void * s, int c, size_t n) {
   unsigned char * cs = (unsigned char *)s;
-  for (int i = 0; i < n; i += 1)
+  for (size_t i = 0; i < n; i += 1)
     cs[i] = c;
   return s;
 }
@@ -143,7 +143,7 @@ void * memset(void * s, int c, size_t n) {
 void * memcpy(void * dest, const void * src, size_t n) {
   const unsigned char * csrc = (const unsigned char *)src;
   unsigned char * cdest = (unsigned char *)dest;
-  for (int i = 0; i < n; i += 1)
+  for (size_t i = 0; i < n; i += 1)
     cdest[i] = csrc[i];
   return dest;
 }
