@@ -260,15 +260,7 @@ tail:
   return d;
 }
 
-static inline int stdlib_stat(const char * path, void * stat_buf) {
-  return (int)(long)syscall2(4, (long)path, (long)stat_buf);
-}
-
-static inline int stdlib_open(const char * pathname, int flags) {
-  return (int)(long)syscall3(2, (long)pathname, (long)flags, 0);
-}
-
-static inline int stdlib_open3(const char * pathname, int flags, int mode) {
+static inline int stdlib_open(const char * pathname, int flags, int mode) {
   return (int)(long)syscall3(2, (long)pathname, (long)flags, (long)mode);
 }
 
@@ -276,12 +268,12 @@ static inline int stdlib_close(int fd) {
   return (int)(long)syscall1(3, (long)fd);
 }
 
-static inline ssize_t stdlib_read(int fd, void * buf, size_t count) {
-  return (ssize_t)syscall3(0, (long)fd, (long)buf, (long)count);
+static inline ssize_t stdlib_pread(int fd, void * buf, size_t count, off_t offset) {
+  return (ssize_t)syscall4(17, (long)fd, (long)buf, (long)count, (long)offset);
 }
 
-static inline ssize_t stdlib_write(int fd, void * buf, size_t count) {
-  return (ssize_t)syscall3(1, (long)fd, (long)buf, (long)count);
+static inline ssize_t stdlib_pwrite(int fd, void * buf, size_t count, off_t offset) {
+  return (ssize_t)syscall4(18, (long)fd, (long)buf, (long)count, (long)offset);
 }
 
 static inline int stdlib_fstat(int fd, struct stat * st) {
