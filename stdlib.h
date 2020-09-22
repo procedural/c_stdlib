@@ -276,6 +276,10 @@ static inline ssize_t stdlib_pwrite(int fd, void * buf, size_t count, off_t offs
   return (ssize_t)syscall4(18, (long)fd, (long)buf, (long)count, (long)offset);
 }
 
+static inline int stdlib_stat(const char * path, struct stat * st) {
+  return (int)(long)syscall2(4, (long)path, (long)st);
+}
+
 static inline int stdlib_fstat(int fd, struct stat * st) {
   return (int)(long)syscall2(5, (long)fd, (long)st);
 }
