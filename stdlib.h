@@ -415,7 +415,6 @@ static inline int stdlib_gettimeofday(struct timeval * tv, void * tz) {
   struct {long tv_sec; long tv_nsec;} ts;
   syscall2(228, 0, (long)&ts);
   tval->tv_sec = ts.tv_sec;
-  syscall3(96, 0, (long)&ts, 0);
   tval->tv_usec = (int)ts.tv_nsec / 1000;
   return 0;
 }
